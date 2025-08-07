@@ -1,0 +1,48 @@
+# arxiv_ai_weekly_crawler.py
+
+import requests
+import feedparser
+import pandas as pd
+from datetime import datetime, timedelta
+
+# -------------------- 配置参数 --------------------
+CATEGORIES = ["cs.AI", "cs.CL", "cs.LG"]  # 人工智能、计算语言学、机器学习等
+MAX_RESULTS = 100
+DAYS_RANGE = 7  # 最近7天的论文
+OUTPUT_FILE = "arxiv_ai_weekly.csv"
+
+# -------------------- 生成查询区间 --------------------
+today = datetime.utcnow()
+start_date = (today - timedelta(days=DAYS_RANGE)).strftime("%Y%m%d0000")
+end_date = today.strftime("%Y%m%d2359")
+
+# -------------------- 构建搜索查询 --------------------
+base_url = "http://export.arxiv.org/api/query?"
+search_query = "cat:" + " OR cat:".join(CATEGORIES)
+url = f"{base_url}search_query={search_query}&start=0&max_results={MAX_RESULTS}&sortBy=submittedDate&sortOrder=descending"
+
+# -------------------- 请求并解析结果 --------------------
+print("🚀 正在抓取 arXiv 论文...")
+response = requests.get(url)
+feed = feedparser.parse(response.text)
+
+# -------------------- 提取字段 --------------------
+data = []
+for entry in feed.entries:
+    published = datetime.strptime(entry.published, "%Y-%m-%dT%H:%M:%SZ")
+    if published < today - timedelta(days=DAYS_RANGE):
+        continue  # 只保留近7天的
+
+    data.append({
+        "Title": entry.title.strip().replace("\n", " "),
+        "Authors": ", ".join(author.name for author in entry.authors),
+        "Published": published.strftime("%Y-%m-%d"),
+        "Summary": entry.summary.strip().replace("\n", " "),
+        "Category": entry.tags[0]['term'] if entry.tags else "",
+        "Link": entry.link
+    })
+
+# -------------------- 保存为 CSV --------------------
+df = pd.DataFrame(data)
+df.to_csv(OUTPUT_FILE, index=False)
+print(f"✅ 共抓取到 {len(df)} 篇论文，已保存至 {OUTPUT_FILE}")
