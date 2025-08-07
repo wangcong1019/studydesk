@@ -1,0 +1,110 @@
+import pandas as pd
+
+# 读取爬取的论文数据
+df = pd.read_csv("arxiv_ai_weekly.csv")
+
+# 一级标签关键词映射（大类 -> 关键词列表）
+primary_labels = {
+    "基础理论与算法": ["reinforcement learning", "optimization", "causal", "probabilistic", "meta learning", "bayesian"],
+    "深度学习与网络结构": ["transformer", "graph neural network", "convolutional", "attention", "rnn", "lstm", "deep learning"],
+    "自然语言处理（NLP）": ["language model", "machine translation", "text generation", "dialogue", "nlp", "bert", "gpt", "text"],
+    "计算机视觉（CV）": ["image classification", "object detection", "video", "segmentation", "cv", "visual", "image"],
+    "生成模型": ["gan", "vae", "diffusion", "generative", "generative adversarial"],
+    "多模态与跨模态": ["multimodal", "vision-language", "audio-visual", "cross-modal", "multimodal learning"],
+    "预训练与微调": ["self-supervised", "fine-tuning", "few-shot", "domain adaptation", "pretrain", "transfer learning"],
+    "应用场景": ["robotics", "autonomous driving", "recommendation", "healthcare", "robot", "autonomous"],
+    "基座模型与大模型": ["large language model", "model parallelism", "knowledge distillation", "foundation model", "large model"],
+    "系统与工程": ["deployment", "inference optimization", "distributed training", "hardware acceleration", "system"]
+}
+
+# 二级标签关键词映射（二级标签更细，一级标签内细分关键词->二级标签）
+secondary_labels = {
+    "reinforcement learning": "强化学习",
+    "optimization": "优化算法",
+    "causal": "因果推断",
+    "probabilistic": "概率模型",
+    "meta learning": "元学习",
+    "bayesian": "贝叶斯方法",
+    "transformer": "Transformer架构",
+    "graph neural network": "图神经网络",
+    "convolutional": "卷积神经网络",
+    "attention": "注意力机制",
+    "rnn": "循环神经网络",
+    "lstm": "长短时记忆网络",
+    "deep learning": "深度学习",
+    "language model": "语言模型",
+    "machine translation": "机器翻译",
+    "text generation": "文本生成",
+    "dialogue": "对话系统",
+    "nlp": "自然语言处理",
+    "bert": "BERT模型",
+    "gpt": "GPT模型",
+    "text": "文本处理",
+    "image classification": "图像分类",
+    "object detection": "目标检测",
+    "video": "视频理解",
+    "segmentation": "图像分割",
+    "cv": "计算机视觉",
+    "visual": "视觉",
+    "image": "图像",
+    "gan": "生成对抗网络",
+    "vae": "变分自编码器",
+    "diffusion": "扩散模型",
+    "generative": "生成模型",
+    "generative adversarial": "生成对抗",
+    "multimodal": "多模态",
+    "vision-language": "视觉语言",
+    "audio-visual": "音视频融合",
+    "cross-modal": "跨模态",
+    "multimodal learning": "多模态学习",
+    "self-supervised": "自监督学习",
+    "fine-tuning": "微调",
+    "few-shot": "少样本学习",
+    "domain adaptation": "领域自适应",
+    "pretrain": "预训练",
+    "transfer learning": "迁移学习",
+    "robotics": "机器人",
+    "autonomous driving": "自动驾驶",
+    "recommendation": "推荐系统",
+    "healthcare": "医疗AI",
+    "robot": "机器人",
+    "autonomous": "自动化",
+    "large language model": "大语言模型",
+    "model parallelism": "模型并行",
+    "knowledge distillation": "知识蒸馏",
+    "foundation model": "基座模型",
+    "large model": "大模型",
+    "deployment": "部署",
+    "inference optimization": "推理优化",
+    "distributed training": "分布式训练",
+    "hardware acceleration": "硬件加速",
+    "system": "系统工程"
+}
+
+def label_paper(text):
+    text = str(text).lower()
+    primary_hits = set()
+    secondary_hits = set()
+    
+    for primary, keywords in primary_labels.items():
+        for kw in keywords:
+            if kw in text:
+                primary_hits.add(primary)
+                # 对应的二级标签
+                if kw in secondary_labels:
+                    secondary_hits.add(secondary_labels[kw])
+    
+    # 如果没匹配到任何一级标签，标为“其他”
+    if not primary_hits:
+        primary_hits.add("其他")
+    if not secondary_hits:
+        secondary_hits.add("无")
+    
+    return "; ".join(primary_hits), "; ".join(secondary_hits)
+
+# 对每条数据，结合标题和摘要做标签
+df["一级标签"], df["二级标签"] = zip(*df.apply(lambda row: label_paper(row["Title"] + " " + row["Summary"]), axis=1))
+
+# 保存新文件
+df.to_csv("arxiv_ai_weekly_labeled.csv", index=False, encoding="utf-8-sig")
+print("✅ 标签打标完成，已保存到 arxiv_ai_weekly_labeled.csv")
